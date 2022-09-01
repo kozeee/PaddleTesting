@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paddle Checkout</title>
+    <!--Paddle Script-->
+    <script src="https://cdn.paddle.com/paddle/paddle.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.27.2/axios.min.js"
+        integrity="sha512-odNmoc1XJy5x1TMVMdC7EMs3IVdItLPlCeL5vSUPN2llYKMJ2eByTTAIiiuqLg+GdNr9hF6z81p27DArRFKT7A=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+</head>
+
+<body>
+    <form>
+        <input type="number" id="quantity" value="1">
+        <br>
+        <input type="email" id="email" placeholder="enter your email address">
+        <input type="text" id="postcode" placeholder="enter your postcode">
+    </form>
+    <button onclick="checkout()">Checkout Now</button>
+
+    <div id="complete" style="display:none">
+        <h1 id="ty">Thanks for your order!</h1>
+        <h2>Your License Key Is:</h2>
+        <p id="license"></p>
+
+        <h2>Find your Paddle Receipt Here:</h2>
+        <p id="receipt"></p>
+    </div>
+
+
+    <script type="text/javascript">
+        const $ = (x) => document.getElementById(x);
+
+        Paddle.Environment.set('production');
+        Paddle.Setup({
+            vendor: 17506, eventCallback: function (data) {
+                if (data.event === 'Checkout.PaymentComplete') {
+                    if (!data.eventData.flagged) {
+                        var checkoutId = data.eventData.checkout.id;
+                        Paddle.Order.details(checkoutId, function (data) {
+                            $('complete').style.display = "block"
+                            $('license').innerText = data.lockers[0].license_code
+                            $('receipt').innerText = data.order.receipt_url
+                        });
+                    } else {
+                        // Payment has not been fully processed at the moment, so order details cannot be retrieved
+                        console.log('Transaction pending review');
+                    }
+                }
+            }
+        });
+
+        async function checkout() {
+            let email = $('email')
+            let postcode = $('postcode')
+            let quantity = $('quantity').value
+            Paddle.Checkout.open({ override: await discountCheck(quantity), product: 516459, displayModeTheme: 'dark', email: email.value, postcode: postcode.value, country: 'US' });
+        }
+
+        async function discountCheck(quantity) {
+            let discount = await axios.post('/checkout', { quantity: quantity })
+            return discount.data
+        }
+    </script>
+</body>
+
+</html>
